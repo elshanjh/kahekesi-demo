@@ -1,0 +1,304 @@
+// Sends Kahekesi push notifications.
+// Instant ones react to database changes (requests, answers, shared items, focus, goal);
+// the scheduled one sends "starts soon" reminders and the morning summary.
+const {onDocumentWritten, onDocumentCreated} = require('firebase-functions/v2/firestore');
+const {onSchedule} = require('firebase-functions/v2/scheduler');
+const {setGlobalOptions, logger} = require('firebase-functions/v2');
+const {initializeApp} = require('firebase-admin/app');
+const {getFirestore} = require('firebase-admin/firestore');
+const {getMessaging} = require('firebase-admin/messaging');
+
+initializeApp();
+setGlobalOptions({region: process.env.FN_REGION || 'europe-west1', maxInstances: 3, memory: '256MiB'});
+const db = getFirestore();
+
+const DEF = {nameA: 'Alex', nameB: 'Sam', goalTitle: '', goalTarget: 300, goalSince: 0, tz: 'Europe/Tallinn'};
+async function cfg() { const s = await db.doc('config/main').get(); return Object.assign({}, DEF, s.exists ? s.data() : {}); }
+const other = p => p === 'a' ? 'b' : 'a';
+const nm = (c, p) => p === 'a' ? c.nameA : p === 'b' ? c.nameB : 'Someone';
+const DEAD = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token', 'messaging/invalid-argument']);
+
+// Push to every device of the users that pass `pick`, respecting each user's notification settings.
+async function push(pick, type, msg) {
+  const users = await db.collection('users').get();
+  for (const u of users.docs) {
+    const d = u.data();
+    if (!pick(d, u.id)) continue;
+    if (type !== 'test' && d.prefs && d.prefs[type] === false) continue;
+    const toks = await u.ref.collection('tokens').get();
+    const list = toks.docs.filter(t => t.data().token);
+    if (!list.length) continue;
+    const res = await getMessaging().sendEachForMulticast({
+      tokens: list.map(t => t.data().token),
+      data: {title: String(msg.title || 'Kahekesi'), body: String(msg.body || ''), tag: String(msg.tag || type), url: String(msg.url || '/')},
+      webpush: {headers: {Urgency: 'high', TTL: '86400'}},
+    });
+    await Promise.all(res.responses.map((r, i) => {
+      if (r.success) return null;
+      const code = r.error && r.error.code;
+      logger.warn('push failed', {code, user: u.id});
+      return DEAD.has(code) ? list[i].ref.delete() : null;
+    }));
+  }
+}
+const to = (people, type, msg) => push(d => people.includes(d.me), type, msg);
+
+exports.onItem = onDocumentWritten('items/{id}', async ev => {
+  const b = ev.data.before.exists ? ev.data.before.data() : null;
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a) return;
+  const id = ev.params.id, t = a.text || '';
+  const c = await cfg();
+
+  if (a.ask === 'pending' && (!b || b.ask !== 'pending') && (a.owner === 'a' || a.owner === 'b')) {
+    await to([a.owner], 'ask', {title: nm(c, a.askedBy) + ' asks you', body: t, tag: 'ask-' + id, url: '/?tab=inbox'});
+  }
+  if (b && b.ask === 'pending' && (a.ask === 'accepted' || a.ask === 'declined') && a.askedBy) {
+    await to([a.askedBy], 'answer', {title: nm(c, a.owner) + (a.ask === 'accepted' ? ' accepted' : ' said not now'), body: t, tag: 'ans-' + id, url: '/?tab=inbox'});
+  }
+  if (!b && !a.done && (a.createdBy === 'a' || a.createdBy === 'b') && !a.ask && (!a.repeat || a.repeat === 'none')) {
+    if (a.kind === 'shopping') await to([other(a.createdBy)], 'shared', {title: nm(c, a.createdBy) + ' added to shopping', body: t, tag: 'shop-' + id, url: '/?tab=shopping'});
+    else if (a.owner === 'both') await to([other(a.createdBy)], 'shared', {title: nm(c, a.createdBy) + ' added a together task', body: t, tag: 'tog-' + id, url: '/?tab=todo'});
+  }
+  if (b && !b.done && a.done && (a.doneBy === 'a' || a.doneBy === 'b')) {
+    const shared = a.owner === 'both' || (a.askedBy && a.askedBy !== a.doneBy);
+    if (shared && a.kind !== 'shopping') {
+      await to([other(a.doneBy)], 'done', {title: nm(c, a.doneBy) + ' finished', body: t + ' (+' + (a.points || 0) + ')', tag: 'done-' + id, url: '/'});
+    }
+    if (c.goalTitle && c.goalTarget > 0) {
+      const all = await db.collection('items').where('done', '==', true).get();
+      let tot = 0;
+      for (const d of all.docs) { const x = d.data(); if ((x.doneAt || 0) >= (c.goalSince || 0) && x.kind !== 'shopping') tot += Number(x.points) || 0; }
+      const before = tot - (a.kind === 'shopping' ? 0 : Number(a.points) || 0);
+      if (before < c.goalTarget && tot >= c.goalTarget) {
+        await to(['a', 'b'], 'goal', {title: 'Goal reached: ' + c.goalTitle, body: 'Together you made ' + c.goalTarget + ' points. Go enjoy it!', tag: 'goal', url: '/?tab=rewards'});
+      }
+    }
+  }
+});
+
+exports.onStatus = onDocumentWritten('status/{p}', async ev => {
+  const p = ev.params.p;
+  if (p !== 'a' && p !== 'b') return;
+  const b = ev.data.before.exists ? ev.data.before.data() : null;
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a || !a.text) return;
+  if (b && b.text === a.text && (a.at || 0) - (b.at || 0) < 30 * 60e3) return;
+  const c = await cfg();
+  const mins = a.until ? Math.round((a.until - a.at) / 6e4) : 0;
+  await to([other(p)], 'focus', {title: nm(c, p) + ' started focusing', body: a.text + (mins ? ' · ' + mins + ' min' : ''), tag: 'focus-' + p, url: '/'});
+});
+
+const BK = {tea: ['🍵', 'Tea'], lunch: ['🍽️', 'Lunch'], walk: ['🚶', 'Walk'], rest: ['😴', 'Rest'], youtube: ['📺', 'YouTube'], scroll: ['📱', 'Scrolling'], game: ['🎮', 'Game']};
+const bk = b => BK[b.kind] || ['⏸️', b.label || 'Break'];
+
+exports.onBreak = onDocumentCreated('breaks/{id}', async ev => {
+  const b = ev.data && ev.data.data();
+  if (!b || b.end || (b.who !== 'a' && b.who !== 'b')) return;
+  const c = await cfg(), [e, l] = bk(b);
+  await to([other(b.who)], 'breaks', {title: nm(c, b.who) + ' is taking a break', body: e + ' ' + l + (b.planned ? ' · ' + b.planned + ' min' : ''), tag: 'break-' + b.who, url: '/'});
+});
+
+exports.onRedeem = onDocumentCreated('redemptions/{id}', async ev => {
+  const r = ev.data && ev.data.data();
+  if (!r || (r.who !== 'a' && r.who !== 'b')) return;
+  const c = await cfg();
+  await to([other(r.who)], 'goal', {title: nm(c, r.who) + ' redeemed a reward', body: r.title + ' (−' + r.cost + ' pts)', tag: 'redeem-' + ev.params.id, url: '/?tab=rewards'});
+});
+
+exports.onUser = onDocumentWritten('users/{uid}', async ev => {
+  const b = ev.data.before.exists ? ev.data.before.data() : {};
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a || !a.testAt || a.testAt === b.testAt) return;
+  await push((d, id) => id === ev.params.uid, 'test', {title: 'Kahekesi works', body: 'Notifications are on for this device. Agla says hi.', tag: 'test'});
+});
+
+/* ---------- cycle: predictions from the person's own history (same rules as the app) ---------- */
+const dayDiff = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+const SKIP = new Set(['stress', 'travel', 'sick', 'meds']);
+function cycleStats(list, todayStr) {
+  const l = list.filter(p => p.start).sort((a, b) => a.start.localeCompare(b.start));
+  const lens = [];
+  for (let i = 1; i < l.length; i++) { const d = dayDiff(l[i - 1].start, l[i].start); if (d >= 15 && d <= 60 && !(l[i - 1].tags || []).some(t => SKIP.has(t))) lens.push(d); }
+  const recent = lens.slice(-6), avg = recent.length ? Math.round(recent.reduce((a, b) => a + b, 0) / recent.length) : 28;
+  const sd = recent.length > 1 ? Math.sqrt(recent.reduce((a, b) => a + (b - avg) ** 2, 0) / recent.length) : 0;
+  const pl = l.filter(p => p.end).map(p => dayDiff(p.start, p.end) + 1).filter(n => n >= 2 && n < 15).slice(-6);
+  const plen = pl.length ? Math.round(pl.reduce((a, b) => a + b, 0) / pl.length) : 5;
+  const last = l[l.length - 1] || null;
+  let inP = false;
+  if (last) { const d = dayDiff(last.start, todayStr); inP = d >= 0 && (last.end ? todayStr <= last.end : d < 14); }
+  const spread = Math.max(1, Math.min(4, Math.round(sd)));
+  const next = last ? {from: addDays(last.start, avg - spread), to: addDays(last.start, avg + spread)} : null;
+  return {avg, plen, last, inP, next};
+}
+const shareInPeriod = (s, t) => s.lastStart && dayDiff(s.lastStart, t) >= 0 && (s.lastEnd ? t <= s.lastEnd : dayDiff(s.lastStart, t) < 14);
+
+exports.onCycleShare = onDocumentWritten('cycle/{p}', async ev => {
+  const p = ev.params.p;
+  if (p !== 'a' && p !== 'b') return;
+  const b = ev.data.before.exists ? ev.data.before.data() : null;
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a || a.level === 'off' || !a.lastStart || (b && b.lastStart === a.lastStart) || a.lastEnd) return;
+  const c = await cfg(), t = local(new Date(), c.tz || DEF.tz).date;
+  if (dayDiff(a.lastStart, t) > 2) return;
+  await to([other(p)], 'cycle', {title: nm(c, p) + "'s period started 🫶", body: a.helps ? ('What helps: ' + a.helps).slice(0, 140) : 'A gentle few days ahead.', tag: 'cycle-' + p, url: '/?tab=cycle'});
+});
+
+// Reminders set for the other person, and nudges sent from the app.
+exports.onReminder = onDocumentWritten('reminders/{id}', async ev => {
+  const b = ev.data.before.exists ? ev.data.before.data() : null;
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a || (a.who !== 'a' && a.who !== 'b')) return;
+  const c = await cfg(), id = ev.params.id;
+  if (!b && a.from && a.from !== a.who) {
+    await to([a.who], 'remFrom', {title: nm(c, a.from) + ' set a reminder for you', body: a.text + ' · at ' + a.time, tag: 'remset-' + id, url: '/?tab=rem'});
+  }
+  const p = a.poke, q = b && b.poke;
+  if (p && p.at && (!q || q.at !== p.at) && Date.now() - p.at < 10 * 60e3) {
+    if (p.by === a.who) await to([a.who], 'rem', {title: '⏰ ' + a.text, body: 'Tick it in Kahekesi when it is done.', tag: 'rem-' + id, url: '/?tab=rem'});
+    else await to([a.who], 'remFrom', {title: nm(c, p.by) + ' reminds you 👉', body: a.text, tag: 'rem-' + id, url: '/?tab=rem'});
+  }
+});
+
+exports.onWish = onDocumentWritten('wishes/{id}', async ev => {
+  const b = ev.data.before.exists ? ev.data.before.data() : null;
+  const a = ev.data.after.exists ? ev.data.after.data() : null;
+  if (!a || (a.from !== 'a' && a.from !== 'b')) return;
+  const c = await cfg(), list = [...(a.dont || []), ...(a.please || [])].join(' · ') + (a.note ? ' · ' + a.note : '');
+  if (!b) await to([other(a.from)], 'wish', {title: nm(c, a.from) + ' asks for today', body: list, tag: 'wish-' + ev.params.id, url: '/?tab=day'});
+  else if (a.ack && !b.ack) await to([a.from], 'wish', {title: nm(c, other(a.from)) + ' is on it 👍', body: list, tag: 'wish-' + ev.params.id, url: '/?tab=day'});
+  else {
+    const was = new Set(b.doneItems || []), now = (a.doneItems || []).filter(t => !was.has(t));
+    if (now.length) await to([a.from], 'wish', {title: nm(c, other(a.from)) + ': done ✓', body: now.join(' · '), tag: 'wishdone-' + ev.params.id, url: '/'});
+  }
+});
+
+function local(date, tz) {
+  const f = new Intl.DateTimeFormat('en-CA', {timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).formatToParts(date);
+  const g = k => f.find(x => x.type === k).value;
+  return {date: g('year') + '-' + g('month') + '-' + g('day'), hm: g('hour') + ':' + g('minute')};
+}
+function addDays(s, n) { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+const visibleTo = (x, p) => (x.owner === p || x.owner === 'both') && x.ask !== 'pending' && x.ask !== 'declined';
+
+exports.reminders = onSchedule({schedule: 'every 5 minutes', timeZone: 'Europe/Tallinn'}, async () => {
+  const c = await cfg();
+  let tz = c.tz;
+  try { new Intl.DateTimeFormat('en', {timeZone: tz}); } catch (e) { tz = DEF.tz; }
+  const now = local(new Date(), tz), soon = local(new Date(Date.now() + 15 * 60e3), tz);
+  const until = soon.date === now.date ? soon.hm : '24:00';
+  const open = (await db.collection('items').where('done', '==', false).get()).docs;
+
+  for (const d of open) {
+    const x = d.data();
+    if (x.date !== now.date || !x.start || x.kind === 'shopping') continue;
+    if (!(x.start > now.hm && x.start <= until)) continue;
+    const key = x.date + ' ' + x.start;
+    if (x.remindedFor === key) continue;
+    const people = x.owner === 'both' ? ['a', 'b'] : (x.owner === 'a' || x.owner === 'b') && x.ask !== 'pending' && x.ask !== 'declined' ? [x.owner] : [];
+    if (!people.length) continue;
+    await d.ref.update({remindedFor: key});
+    await to(people, 'plan', {title: 'At ' + x.start + ': ' + x.text, body: x.owner === 'both' ? 'Together with ' + nm(c, other(people[0])) : 'Coming up soon', tag: 'plan-' + d.id, url: '/?tab=day'});
+  }
+
+  // Daily reminders: a notification at the first time, then again every `every` minutes (0 = once) until ticked.
+  // Nothing new after the reminder's stop time (default 22:00).
+  const wd = new Date(now.date + 'T12:00:00Z').getUTCDay();
+  const onDay = r => r.days === 'date' ? r.date === now.date : r.days === 'pick' ? (r.wd || []).includes(wd) : r.days === 'weekdays' ? wd > 0 && wd < 6 : r.days === 'weekends' ? wd === 0 || wd === 6 : true;
+  for (const d of (await db.collection('reminders').get()).docs) {
+    const r = d.data(), every = r.every == null ? 60 : Number(r.every) || 0, until = /^\d\d:\d\d$/.test(r.until || '') ? r.until : '22:00';
+    if (!r.text || !/^\d\d:\d\d$/.test(r.time || '') || (r.who !== 'a' && r.who !== 'b')) continue;
+    if (r.doneOn === now.date || now.hm < r.time || !onDay(r)) continue;
+    const first = r.nagDate !== now.date;
+    if (now.hm >= until && !(first && r.time >= until)) continue;
+    if (!first && (!every || Date.now() - (r.nagAt || 0) < (every - 2) * 60e3)) continue;
+    await d.ref.update({nagDate: now.date, nagAt: Date.now()});
+    const by = r.from && r.from !== r.who ? ' (from ' + nm(c, r.from) + ')' : '';
+    await to([r.who], 'rem', first
+      ? {title: '⏰ ' + r.text, body: 'Tick it in Kahekesi when it is done' + by + '.', tag: 'rem-' + d.id, url: '/?tab=rem'}
+      : {title: 'Still to do: ' + r.text, body: 'Not ticked yet today. One tap and it is off your mind.', tag: 'rem-' + d.id, url: '/?tab=rem'});
+  }
+
+  // Task reminders: from the chosen day and time, until the task is ticked (again each day it stays open).
+  for (const d of open) {
+    const x = d.data();
+    if (!/^\d\d:\d\d$/.test(x.remT || '')) continue;
+    const day = [x.remD, x.date].filter(Boolean).sort().pop() || now.date;
+    if (now.date < day || now.hm < x.remT) continue;
+    const every = Number(x.remE) || 0, first = x.remNag !== now.date;
+    if (now.hm >= '22:00' && !(first && x.remT >= '22:00')) continue;
+    if (!first && (!every || Date.now() - (x.remAt || 0) < (every - 2) * 60e3)) continue;
+    const people = x.owner === 'both' ? ['a', 'b'] : (x.owner === 'a' || x.owner === 'b') && x.ask !== 'pending' && x.ask !== 'declined' ? [x.owner] : [];
+    if (!people.length) continue;
+    await d.ref.update({remNag: now.date, remAt: Date.now()});
+    await to(people, 'rem', {title: '⏰ ' + x.text, body: first ? 'Your reminder for this task.' : 'Still open. Tick it when it is done.', tag: 'task-' + d.id, url: x.date ? '/?tab=day' : '/?tab=todo'});
+  }
+
+  // Break nudges: when a planned break runs out and the app did not already nudge.
+  // Shared breaks live in /breaks, private ones in /users/{uid}/breaks; a collection-group query covers both.
+  const breaks = (await db.collectionGroup('breaks').where('end', '==', null).get()).docs;
+  for (const d of breaks) {
+    const b = d.data(), due = b.start + (b.planned || 0) * 60e3;
+    if (Date.now() - b.start > 4 * 3600e3) { await d.ref.update({end: due > b.start ? due : b.start + 4 * 3600e3, autoEnded: true, nudged: true}); continue; }
+    if (!b.planned || b.nudged || Date.now() < due) continue;
+    await d.ref.update({nudged: true});
+    const [e, l] = bk(b);
+    const owner = d.ref.parent.parent ? d.ref.parent.parent.id : null;
+    await push((u, id) => owner ? id === owner : u.me === b.who, 'nudge', {title: 'Break is up ' + e, body: 'Your ' + b.planned + ' min ' + l.toLowerCase() + ' break is over. Ready to go back?', tag: 'nudge', url: '/'});
+  }
+
+  const stRef = db.doc('notifier/state');
+  const st = (await stRef.get()).data() || {};
+  const trackers = (await db.collection('users').where('cycleOn', '==', true).get()).docs;
+  const statsFor = async u => cycleStats((await u.ref.collection('periods').get()).docs.map(d => d.data()), now.date);
+
+  // Evening: on period days (and the day or two before), a gentle reminder to check in if she has not yet.
+  if (now.hm >= '20:00' && st.evening !== now.date) {
+    await stRef.set({evening: now.date}, {merge: true});
+    if (now.hm <= '22:30') for (const u of trackers) {
+      const x = await statsFor(u), near = x.next && now.date >= addDays(x.next.from, -1) && now.date <= x.next.to;
+      if (!x.inP && !near) continue;
+      if ((await u.ref.collection('cdays').doc(now.date).get()).exists) continue;
+      await push((d, id) => id === u.id, 'cycleLog', {title: 'How are you today? 🐾', body: 'Two sliders and an Agla. Ten seconds.', tag: 'cyclelog', url: '/?tab=cycle'});
+    }
+  }
+
+  if (now.hm >= '08:00' && st.morning !== now.date) {
+    await stRef.set({morning: now.date}, {merge: true});
+    if (now.hm > '11:00') return; // first run late in the day: skip, start tomorrow
+    const tm = addDays(now.date, 1);
+    for (const p of ['a', 'b']) {
+      const mine = open.map(d => d.data()).filter(x => visibleTo(x, p) && x.kind !== 'shopping');
+      const planned = mine.filter(x => x.date === now.date).length;
+      const late = mine.filter(x => x.date && x.date < now.date).length;
+      const dueToday = mine.filter(x => x.due && x.due <= now.date).length;
+      const dueTom = mine.filter(x => x.due === tm).length;
+      const parts = [planned ? planned + ' planned today' : null, dueToday ? dueToday + ' due today' : null, dueTom ? dueTom + ' due tomorrow' : null, late ? late + ' left from earlier' : null].filter(Boolean);
+      if (!parts.length) continue;
+      await to([p], 'morning', {title: 'Good morning, ' + nm(c, p), body: parts.join(' · '), tag: 'morning', url: '/?tab=day'});
+    }
+    // On the 1st: last month's shopping report is ready.
+    if (now.date.slice(8) === '01') {
+      const [y, m] = now.date.split('-').map(Number), lm = new Date(Date.UTC(y, m - 2, 1)), key = lm.toISOString().slice(0, 7);
+      const trips = (await db.collection('trips').get()).docs.map(d => d.data()).filter(t => t.at && local(new Date(t.at), tz).date.slice(0, 7) === key);
+      if (trips.length) {
+        const sum = trips.reduce((n, t) => n + (t.total || (t.items || []).reduce((a, x) => a + (x.price || 0), 0)), 0);
+        const month = lm.toLocaleDateString('en-GB', {month: 'long', timeZone: 'UTC'});
+        await to(['a', 'b'], 'report', {title: '📊 Your ' + month + ' shopping report', body: trips.length + (trips.length === 1 ? ' trip' : ' trips') + (sum ? ', €' + sum.toFixed(2).replace(/\.00$/, '') + ' spent' : '') + '. See what you bought most.', tag: 'report-' + key, url: '/?tab=report'});
+      }
+    }
+    // Her own reminder when the period may start, and a heads-up for the partner two days before.
+    for (const u of trackers) {
+      const x = await statsFor(u);
+      if (x.next && !x.inP && now.date >= addDays(x.next.from, -1) && now.date <= addDays(x.next.to, 3)) {
+        await push((d, id) => id === u.id, 'cycleStart', {title: 'Your period may start around now', body: 'Tap Started in Kahekesi when it does.', tag: 'cyclestart', url: '/?tab=cycle'});
+      }
+    }
+    for (const p of ['a', 'b']) {
+      const sd = (await db.doc('cycle/' + p).get()).data();
+      if (!sd || sd.level === 'off' || !sd.next || shareInPeriod(sd, now.date)) continue;
+      if (dayDiff(now.date, sd.next.from) !== 2) continue;
+      await to([other(p)], 'cycle', {title: 'Heads-up: ' + nm(c, p) + "'s period may start in a few days", body: sd.helps ? ('What helps: ' + sd.helps).slice(0, 140) : 'A gentle week may be coming 🫶', tag: 'cycle-' + p, url: '/?tab=cycle'});
+    }
+  }
+});
