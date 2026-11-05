@@ -53,7 +53,7 @@
 :root[data-theme="purple"] .btn:not(.ghost),:root[data-theme="neon"] .btn:not(.ghost){background:var(--grad);color:#fff;box-shadow:0 4px 16px var(--glow1)}
 :root[data-theme="purple"] .brand h1,:root[data-theme="neon"] .brand h1{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 :root[data-theme="neon"] .tabs,:root[data-theme="neon"] .side{background:#140b22ee}
-:root[data-theme="purple"] .top{background:#f3eefbd9;box-shadow:0 0 0 100vmax #f3eefbd9;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}:root[data-theme="neon"] .top{background:#0e0818cc;box-shadow:0 0 0 100vmax #0e0818cc;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+:root[data-theme="purple"] .top{background:#f3eefbd9;box-shadow:-100vmax 0 0 #f3eefbd9,100vmax 0 0 #f3eefbd9;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}:root[data-theme="neon"] .top{background:#0e0818cc;box-shadow:-100vmax 0 0 #0e0818cc,100vmax 0 0 #0e0818cc;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 :root[data-theme="neon"] .tabs [aria-current="page"]{text-shadow:0 0 12px #c58bffaa}
 
 *{box-sizing:border-box}
@@ -534,14 +534,24 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
 
   <div class="sheet" id="setSheet" hidden>
     <div class="shead"><button type="button" class="sback" id="setBack" aria-label="Back to Settings" hidden>‹</button><h2 id="setTitle">Settings</h2></div>
-    <div class="smenu" id="setMenu">
-      <button type="button" class="srow" data-g="look"><b>🎨</b><span>Look and sound<small>Light, dark, lavender, neon, tick sound</small></span><i>›</i></button>
-      <button type="button" class="srow" data-g="push"><b>🔔</b><span>Notifications<small id="setPushSub">What to tell you</small></span><i>›</i></button>
-      <button type="button" class="srow" data-g="names"><b>🙂</b><span>Names<small id="setNamesSub"></small></span><i>›</i></button>
-      <button type="button" class="srow" data-g="cats"><b>🏷️</b><span>Categories<small id="setCatsSub"></small></span><i>›</i></button>
-      <button type="button" class="srow" data-g="groups"><b>🧺</b><span>Product groups<small>For the shopping report</small></span><i>›</i></button>
-      <button type="button" class="srow" data-g="people" id="setPeopleRow" hidden><b>🔑</b><span>People<small>Who can open Kahekesi</small></span><i>›</i></button>
-      <button type="button" class="srow out" id="setOut"><b>🚪</b><span>Log out<small id="setOutSub"></small></span></button>
+    <div class="setmenu" id="setMenu">
+      <div class="sprof"><i id="setDot"></i><span><b id="setWho"></b><small id="setOutSub"></small></span></div>
+      <p class="scap">App</p>
+      <div class="smenu">
+        <button type="button" class="srow" data-g="look"><b style="--t:#8b5cf6">🎨</b><span>Look and sound<small>Light, dark, lavender, neon, tick sound</small></span><i>›</i></button>
+        <button type="button" class="srow" data-g="push"><b style="--t:#ef4444">🔔</b><span>Notifications<small id="setPushSub">What to tell you</small></span><i>›</i></button>
+      </div>
+      <p class="scap">Lists</p>
+      <div class="smenu">
+        <button type="button" class="srow" data-g="names"><b style="--t:#f59e0b">🙂</b><span>Names<small id="setNamesSub"></small></span><i>›</i></button>
+        <button type="button" class="srow" data-g="cats"><b style="--t:#10b981">🏷️</b><span>Categories<small id="setCatsSub"></small></span><i>›</i></button>
+        <button type="button" class="srow" data-g="groups"><b style="--t:#3b82f6">🧺</b><span>Product groups<small>For the shopping report</small></span><i>›</i></button>
+      </div>
+      <p class="scap" id="setAccCap">Account</p>
+      <div class="smenu" id="setAcc">
+        <button type="button" class="srow" data-g="people" id="setPeopleRow" hidden><b style="--t:#64748b">🔑</b><span>People<small>Who can open Kahekesi</small></span><i>›</i></button>
+        <button type="button" class="srow out" id="setOut"><b style="--t:#ef4444">🚪</b><span>Log out<small id="setOutHint">Tap twice to log out of this phone</small></span></button>
+      </div>
     </div>
     <div class="sgrp" data-g="look" hidden>
       <label class="f">Screen<div class="tpick" id="setTheme"><button type="button" data-v="auto"><i style="background:linear-gradient(90deg,#edf1f2 50%,#0f191c 50%)"></i>Auto</button><button type="button" data-v="light"><i style="background:#edf1f2"></i>Light</button><button type="button" data-v="dark"><i style="background:#0f191c"></i>Dark</button><button type="button" data-v="purple"><i style="background:linear-gradient(135deg,#f3eefb,#c4b5fd)"></i>Lavender</button><button type="button" data-v="neon"><i style="background:linear-gradient(135deg,#a855f7,#ec4899 60%,#0e0818)"></i>Neon</button></div></label>
@@ -607,12 +617,17 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
 .tpick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.tpick button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink)}
 .tpick i{width:30px;height:30px;border-radius:50%;border:1px solid #8884}.tpick button[aria-pressed="true"]{border-color:var(--both);box-shadow:0 0 0 2px var(--both-soft)}
 .shead{display:flex;align-items:center;gap:6px}.shead h2{margin:0}
-.sback{font-size:28px;line-height:1;width:36px;height:36px;border-radius:10px;color:var(--ink);margin-left:-8px}
+.sback{font-size:24px;line-height:1;width:36px;height:36px;border-radius:50%;color:var(--ink);background:var(--sunk);display:grid;place-items:center;padding-bottom:3px}
+#setSheet .shead h2{font-size:24px}
 .smenu{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.srow{display:flex;align-items:center;gap:12px;padding:12px 14px;text-align:left;color:var(--ink);font-size:16px;font-weight:600;border-top:1px solid var(--line)}
-.srow:first-child{border-top:0}.srow[hidden]{display:none}.srow>b{font-size:20px;width:26px;text-align:center}
+.srow{display:flex;align-items:center;gap:12px;padding:11px 14px;text-align:left;color:var(--ink);font-size:16px;font-weight:600;border-top:1px solid var(--div)}.srow:active{background:var(--sunk)}
+.srow:first-child{border-top:0}.srow[hidden]{display:none}.srow>b{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:color-mix(in srgb,var(--t,#888) 18%,transparent)}
 .srow>span{flex:1;min-width:0;display:flex;flex-direction:column}.srow small{font-size:13px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srow>i{font-style:normal;font-size:22px;color:var(--muted)}.srow.out{color:var(--warn)}
+.srow>i{font-style:normal;font-size:20px;color:var(--muted);opacity:.7}
+.setmenu{display:flex;flex-direction:column;gap:6px}.setmenu[hidden]{display:none}.scap{margin:10px 4px 2px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.sprof{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--edge);box-shadow:var(--shadow)}
+.sprof>i{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font:600 20px var(--display);color:#fff;font-style:normal}
+.sprof>span{display:flex;flex-direction:column;min-width:0}.sprof b{font:600 19px/1.2 var(--display);color:var(--ink)}.sprof small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.srow.out{color:var(--warn)}
 .sgrp{display:flex;flex-direction:column;gap:14px}
 .pstat{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
 .pstat .dot{width:10px;height:10px;border-radius:50%;background:var(--b);box-shadow:0 0 0 4px var(--b-soft);flex:none}
@@ -1863,12 +1878,13 @@ $('setMenu').addEventListener('click',e=>{const b=e.target.closest('.srow');if(b
 $('setBack').onclick=()=>setGroup(null);
 $('setTheme').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg('setTheme',b.dataset.v);ls.set('theme',b.dataset.v);applyTheme(b.dataset.v);});
 $('setSound').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.sound=b.dataset.v!=='off';ls.set('sound',ui.sound?'on':'off');});
-$('setOut').onclick=e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure='1';$('setOutSub').textContent='Tap again to log out of this phone';return;}
+$('setOut').onclick=e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure='1';$('setOutHint').textContent='Tap again to log out';return;}
   if(window.kkSignOut)window.kkSignOut();else location.reload();};
 $('meBtn').onclick=()=>{$('setMeWrap').hidden=!!window.kkLocked;$('setMe').children[0].textContent=name('a');$('setMe').children[1].textContent=name('b');seg('setMe',ui.me);
   $('setA').value=S.cfg.nameA;$('setB').value=S.cfg.nameB;seg('setSound',ui.sound?'on':'off');seg('setTheme',ls.get('theme')||'auto');
   $('setNamesSub').textContent=name('a')+' and '+name('b');$('setCatsSub').textContent=cats().length?cats().join(', '):'None yet';
-  $('setPeopleRow').hidden=!window.kkOwner;$('setOut').hidden=!window.kkSignOut;delete $('setOut').dataset.sure;$('setOutSub').textContent=window.kkEmail||'';
+  $('setPeopleRow').hidden=!window.kkOwner;$('setOut').hidden=!window.kkSignOut;$('setAccCap').hidden=$('setAcc').hidden=!window.kkSignOut&&!window.kkOwner;delete $('setOut').dataset.sure;$('setOutHint').textContent='Tap twice to log out of this phone';$('setOutSub').textContent=window.kkEmail||'This phone';
+  $('setWho').textContent=name(ui.me);$('setDot').style.background='var(--'+ui.me+')';$('setDot').textContent=(name(ui.me)||'?').slice(0,1).toUpperCase();
   setGroup(null);show('setSheet');};
 function setMe(p){ui.me=p;ui.meKnown=true;ls.set('me',p);if(window.kkSetMe)window.kkSetMe(p);}
 $('setSave').onclick=()=>{const a=$('setA').value.trim()||DEF.nameA,b=$('setB').value.trim()||DEF.nameB;if(!window.kkLocked)setMe(seg('setMe')||ui.me);
