@@ -18,6 +18,7 @@ My wife and I kept forgetting things and struggled to schedule them: who said th
 - **Points and rewards.** Finished tasks earn points for the person who did them (quick 5, normal 10, big 20). Each person has their own rewards to spend points on, plus one shared goal to save up for together.
 - **Agla, our cat, as the mascot.** She pops up with a meow when you finish something, in a different pose each time you open the app. Small, but it's the reason ticking things off feels good.
 - **Shopping with memory.** A shared list, "buy again" suggestions with the last price, and logging a shopping trip with prices, amounts, brands and discounts, so the app can work out the price per kg or litre and show a monthly shopping report.
+- **Reminders that keep nudging.** Daily, on picked weekdays or on one date, repeating every few minutes until ticked. You can set one for the other person or send a nudge on theirs.
 - **Focus mode, low-energy mode and a weekly review.** For the days when the list feels too long.
 - **Push notifications.** Instant ones (a new request, a finished shared task) and scheduled ones (15 minutes before a planned time, a morning summary). Each person chooses which they want.
 

@@ -295,6 +295,10 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
 .sheet .acts .btn:first-child{flex:1}
 .edmore{display:flex;flex-direction:column;gap:14px}.edmore[hidden]{display:none}
 #edMoreBtn{align-self:stretch}
+.edtabs{display:flex;flex-wrap:wrap;gap:6px}.edtabs button{padding:7px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-size:14px;font-weight:600;color:var(--ink)}
+.edtabs button.set::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--me);margin-left:6px;vertical-align:middle}
+.edtabs button[aria-pressed="true"]{background:var(--me);border-color:var(--me);color:var(--on)}.edtabs button[aria-pressed="true"].set::after{background:var(--on)}
+.edsec{display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:14px;background:var(--sunk)}.edsec[hidden]{display:none}
 
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;background:var(--btn);color:var(--btn-fg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;max-width:calc(100% - 32px);text-align:center}
 .bit{position:fixed;z-index:30;width:8px;height:8px;border-radius:2px;pointer-events:none;animation:fly .7s ease-out forwards}
@@ -327,6 +331,7 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
 .wdays{display:flex;gap:4px}.wdays button{flex:1;min-width:0;padding:9px 0;text-align:center;border-radius:10px;font-size:13px;font-weight:600;background:var(--sunk);color:var(--muted)}.wdays button[aria-pressed="true"]{background:var(--me);color:var(--on)}
 .rmark{flex:none;width:48px;text-align:center;font-size:18px;color:var(--muted)}.rpoke{flex:none;width:38px;height:38px;border-radius:50%;font-size:17px;background:transparent;border:1.5px solid var(--line);display:grid;place-items:center}
 .dchips .chip{padding:7px 12px}.dchips .chip[aria-pressed="true"]{background:var(--me);border-color:var(--me);color:var(--on)}.rpoke:disabled{opacity:.35}.rpoke:active{transform:scale(.9)}
+.tmonth{display:flex;align-items:center;gap:8px;margin-bottom:8px}.tmonth>span{flex:1;display:flex;flex-direction:column;align-items:center}.tmonth small{color:var(--muted);font-size:13px}.tmonth .btn{font-size:20px;min-width:44px}.tmonth .btn:disabled{opacity:.35}
 .rnav{display:flex;align-items:center;justify-content:space-between;gap:8px}.rnav h2{margin:0;font-size:20px;text-align:center}.rnav .btn{font-size:20px;min-width:44px}
 .rhero{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}.rhero>div:first-child{display:flex;flex-direction:column}
 .rhero .big{font-family:var(--display);font-size:40px;line-height:1.1;color:var(--ink)}.rhero small{color:var(--muted);font-size:13px}
@@ -438,21 +443,21 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
       <button type="button" data-v="5">Quick · 5</button><button type="button" data-v="10">Normal · 10</button><button type="button" data-v="20">Big · 20</button></div></label>
     <button type="button" class="btn ghost" id="edMoreBtn" aria-expanded="false" aria-controls="edMore">More details</button>
     <div id="edMore" class="edmore" hidden>
-    <label class="f">Where it goes<div class="seg" id="edKind">
-      <button type="button" data-v="inbox">Inbox</button><button type="button" data-v="todo">To-do</button><button type="button" data-v="shopping">Shopping</button></div></label>
-    <div class="r">
-      <label class="f">Category<select class="field" id="edCat"></select></label>
-      <label class="f">Or a new one<input class="field" id="edCatNew" maxlength="20" placeholder="Type a name"></label>
-    </div>
+    <div class="edtabs" id="edTabs"><button type="button" data-s="time" aria-pressed="false">🕒 Time</button><button type="button" data-s="remind" aria-pressed="false">🔔 Reminder</button><button type="button" data-s="due" aria-pressed="false">📅 Deadline</button><button type="button" data-s="rep" aria-pressed="false">🔁 Repeat</button><button type="button" data-s="steps" aria-pressed="false">👣 Steps</button><button type="button" data-s="pri" aria-pressed="false">⚡ Priority</button><button type="button" data-s="est" aria-pressed="false">⏱ How long</button><button type="button" data-s="cat" aria-pressed="false">🏷️ Category</button><button type="button" data-s="note" aria-pressed="false">📝 Notes</button><button type="button" data-s="kind" aria-pressed="false">📥 Where it goes</button></div>
+    <div class="edsec" data-s="time" hidden>
     <div class="r">
       <label class="f">From<input class="field" type="time" id="edStart"></label>
       <label class="f">To<input class="field" type="time" id="edEnd"></label>
     </div>
+    <label class="f">Part of the day, if there is no exact time<div class="seg" id="edPart">
+      <button type="button" data-v="">Any time</button><button type="button" data-v="morning">Morning</button><button type="button" data-v="afternoon">Afternoon</button><button type="button" data-v="evening">Evening</button></div></label>
+    </div>
+    <div class="edsec" data-s="remind" hidden>
     <div class="fl">🔔 Remind me<div class="r"><input class="field" type="date" id="edRemD" aria-label="Reminder day" style="flex:1.3;min-width:0"><input class="field" type="time" id="edRemT" aria-label="Reminder time" style="flex:1;min-width:0"></div>
       <div class="r"><select class="field" id="edRemE" aria-label="Remind again" style="flex:1"><option value="0">Just once</option><option value="5">Again every 5 min</option><option value="10">Again every 10 min</option><option value="15">Again every 15 min</option><option value="30">Again every 30 min</option><option value="60">Again every hour</option><option value="120">Again every 2 hours</option></select><button type="button" class="btn ghost small" id="edRemNone">No reminder</button></div>
       <small class="hint">Until it is ticked. Nothing new after 22:00.</small></div>
-    <label class="f">Part of the day, if there is no exact time<div class="seg" id="edPart">
-      <button type="button" data-v="">Any time</button><button type="button" data-v="morning">Morning</button><button type="button" data-v="afternoon">Afternoon</button><button type="button" data-v="evening">Evening</button></div></label>
+    </div>
+    <div class="edsec" data-s="due" hidden>
     <label class="f">Deadline<input class="field" type="date" id="edDue"></label>
     <div class="r">
       <button type="button" class="btn ghost small" id="dueToday">Today</button>
@@ -460,16 +465,37 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:60
       <button type="button" class="btn ghost small" id="dueWeek">In a week</button>
       <button type="button" class="btn ghost small" id="dueNone">No deadline</button>
     </div>
+    </div>
+    <div class="edsec" data-s="rep" hidden>
     <label class="f">Repeats<div class="seg" id="edRep">
       <button type="button" data-v="none">Never</button><button type="button" data-v="daily">Daily</button><button type="button" data-v="weekly">Weekly</button><button type="button" data-v="monthly">Monthly</button></div></label>
+    </div>
+    <div class="edsec" data-s="steps" hidden>
+    <div class="fl">Steps, to make it easier to start<div class="fsteps" id="edSteps"></div>
+      <div class="r"><input class="field" id="edStepNew" maxlength="80" placeholder="A small first step" aria-label="New step" style="flex:1"><button type="button" class="btn ghost small" id="edStepAdd">Add step</button></div></div>
+    </div>
+    <div class="edsec" data-s="pri" hidden>
     <div class="r lv">
       <label class="f">Importance<div class="seg" id="edImp"><button type="button" data-v="-1">Low</button><button type="button" data-v="0">Normal</button><button type="button" data-v="1">High</button></div></label>
       <label class="f">Urgency<div class="seg" id="edUrg"><button type="button" data-v="-1">Low</button><button type="button" data-v="0">Normal</button><button type="button" data-v="1">Urgent</button></div></label>
     </div>
-    <div class="fl">Steps, to make it easier to start<div class="fsteps" id="edSteps"></div>
-      <div class="r"><input class="field" id="edStepNew" maxlength="80" placeholder="A small first step" aria-label="New step" style="flex:1"><button type="button" class="btn ghost small" id="edStepAdd">Add step</button></div></div>
+    </div>
+    <div class="edsec" data-s="est" hidden>
     <label class="f">Takes about<select class="field" id="edEst"><option value="">Not sure</option><option>15 min</option><option>30 min</option><option>1 hour</option><option>2 hours</option><option>Half a day</option><option>A full day</option></select></label>
+    </div>
+    <div class="edsec" data-s="cat" hidden>
+    <div class="r">
+      <label class="f">Category<select class="field" id="edCat"></select></label>
+      <label class="f">Or a new one<input class="field" id="edCatNew" maxlength="20" placeholder="Type a name"></label>
+    </div>
+    </div>
+    <div class="edsec" data-s="note" hidden>
     <label class="f">Notes<textarea class="field" id="edNote" placeholder="Details, links, which book…"></textarea></label>
+    </div>
+    <div class="edsec" data-s="kind" hidden>
+    <label class="f">Where it goes<div class="seg" id="edKind">
+      <button type="button" data-v="inbox">Inbox</button><button type="button" data-v="todo">To-do</button><button type="button" data-v="shopping">Shopping</button></div></label>
+    </div>
     <button type="button" class="btn ghost small" id="edFocus" style="align-self:flex-start">Focus on this now</button>
     <a class="cal" id="edCal" target="_blank" rel="noopener" hidden>Add to Google Calendar ↗</a>
     </div>
@@ -1176,7 +1202,7 @@ const key=()=>el('div',{class:'key'},el('span',{},el('i'),'Just mine'),el('span'
 const sorted=l=>l.sort((x,y)=>prio(y)-prio(x)||(x.due||x.date||'9').localeCompare(y.due||y.date||'9')||byNew(x,y));
 const doneNow=f=>vis().filter(it=>it.done&&it.doneAt&&ymd(new Date(it.doneAt))===today()&&f(it)).sort((x,y)=>y.doneAt-x.doneAt);
 function accept(it,plan){
-  if(plan){openEdit(it.id);ui.accepting=true;$('edTitle').textContent='Add to your schedule';edMore(true);$('edSave').textContent='Accept and plan';if(!$('edDate').value)$('edDate').value=today();if(seg('edKind')==='inbox')seg('edKind','todo');calLink();return;}
+  if(plan){openEdit(it.id);ui.accepting=true;$('edTitle').textContent='Add to your schedule';edMore(true);edSec('time',true);$('edSave').textContent='Accept and plan';if(!$('edDate').value)$('edDate').value=today();if(seg('edKind')==='inbox')seg('edKind','todo');calLink();return;}
   patch('items',it.id,{ask:'accepted',kind:it.kind==='inbox'?'todo':it.kind,askHide:false});toast('Added to your to-dos. '+name(it.askedBy)+' will see you accepted.');}
 function vInbox(){
   const o=other(ui.me),list=vis().filter(it=>(it.kind==='inbox'||it.kind==='idea')&&!it.done).sort(byNew),rq=reqs().sort(byNew),mine=asked().sort(byNew);
@@ -1362,7 +1388,7 @@ function vShop(){
     again.length?el('section',{class:'sec'},el('div',{class:'sec-h'},el('h2',{text:'Buy again'}),el('span',{text:'last bought'})),
       el('div',{class:'chips'},more(again,6,'againAll').map(a=>el('button',{class:'chip','aria-label':'Add '+a.t+' again, last bought '+boughtAgo(a.at),onclick:()=>{put('items',uid(),fresh(blank({text:a.t,kind:'shopping',owner:'both',points:5})));toast('Added '+a.t+'. Last bought '+boughtAgo(a.at)+'.');}},'+ '+a.t,el('small',{class:'ago',text:' · '+boughtAgo(a.at)+(a.pr?' · '+eur(a.pr):'')})))),
       moreBtn(again,6,'againAll')):null,
-    reportCard(),searchBox(),tripsSection(),recentBought()];}
+    reportCard(),searchBox(),tripsSection()];}
 // Search everything you have bought: when, where, how many and for how much.
 // Amounts like "2", "600 g", "1,5 kg", "2 l", "330 ml", "3 pcs". Weight goes to kg, volume to litres.
 function parseAmt(v){if(v==null||v==='')return null;
@@ -1419,12 +1445,16 @@ function recentBought(){const all=vis().filter(it=>it.kind==='shopping'&&it.done
     moreBtn(all,4,'boughtAll'));}
 
 /* ---------- shop trips: one entry per trip with the total and, if you like, each item's price ---------- */
-function tripsSection(){const l=Object.values(S.trips).sort((x,y)=>(y.at||0)-(x.at||0));
+function tripsSection(){const cur=today().slice(0,7),ym=ui.tripMonth||cur,all=Object.values(S.trips),first=all.reduce((m,t)=>t.at&&ymOf(t.at)<m?ymOf(t.at):m,cur);
+  const l=all.filter(t=>t.at&&ymOf(t.at)===ym).sort((x,y)=>(y.at||0)-(x.at||0)),sum=l.reduce((n,t)=>n+(t.total||0),0),go2=n=>{ui.tripMonth=shiftYm(ym,n);ui.tripsAll=false;render();};
   return el('section',{class:'sec'},el('div',{class:'sec-h'},el('h2',{text:'Shop trips'}),el('button',{class:'btn ghost small',text:'+ Log a trip',onclick:()=>openTrip()})),
+    el('div',{class:'tmonth'},el('button',{type:'button',class:'btn ghost small','aria-label':'Previous month',disabled:ym<=first,onclick:()=>go2(-1)},'‹'),
+      el('span',{},el('b',{text:ymLabel(ym)}),el('small',{text:l.length?l.length+(l.length===1?' trip':' trips')+(sum?' · '+eur(sum):''):'No trips'})),
+      el('button',{type:'button',class:'btn ghost small','aria-label':'Next month',disabled:ym>=cur,onclick:()=>go2(1)},'›')),
     l.length?el('div',{class:'blog'},more(l,3,'tripsAll').map(t=>el('button',{class:'rw trip',onclick:()=>openTrip(t.id)},
       el('span',{},(t.store||'Shop trip'),el('small',{style:'display:block;font-size:12.5px;color:var(--muted)',text:fmtDay(ymd(new Date(t.at)))+' · '+(t.items||[]).length+((t.items||[]).length===1?' item':' items')+(t.who?' · '+name(t.who):'')})),
       el('b',{class:'c',style:'color:var(--ink);font-size:16px',text:t.total?eur(t.total):'–'})))):
-    el('p',{class:'empty',text:'Log a trip to keep what you bought and what it cost.'}),
+    el('p',{class:'empty',text:all.length?'No shop trips in '+ymLabel(ym)+'.':'Log a trip to keep what you bought and what it cost.'}),
     moreBtn(l,3,'tripsAll'));}
 const TR={id:null,who:'a',date:'',store:'',total:'',sel:{},price:{},qty:{},name:{},brand:{},sale:{},extra:[]};
 function openTrip(id){const t=id&&S.trips[id];TR.id=id||null;TR.sel={};TR.price={};TR.qty={};TR.name={};TR.brand={};TR.sale={};TR.extra=[];TR.who=(t&&t.who)||ui.me;
@@ -1731,7 +1761,7 @@ function openEdit(id,preset){const it=id?S.items[id]:blank(preset);if(!it)return
   $('edText').value=it.text;seg('edKind',it.kind);for(const b of [...$('edOwner').children].slice(0,2))b.textContent=b.dataset.v===ui.me?'Just me':'For '+name(b.dataset.v);seg('edOwner',it.owner);
   {const cs=cats().concat(it.cat&&!cats().includes(it.cat)?[it.cat]:[]);$('edCat').replaceChildren(el('option',{value:'',text:'None'}),...cs.map(c=>el('option',{text:c})));}$('edCat').value=it.cat||'';$('edCatNew').value='';$('edDate').value=it.date||'';$('edStart').value=it.start||'';$('edEnd').value=it.end||'';seg('edPts',it.points||10);
   seg('edRep',it.repeat||'none');$('edRemT').value=it.remT||'';$('edRemD').value=it.remT?(it.remD||it.date||''):'';$('edRemE').value=String(it.remE==null?0:it.remE);seg('edImp',Number(it.imp)||0);seg('edUrg',Number(it.urg)||0);$('edDue').value=it.due||'';$('edEst').value=it.est||'';seg('edPart',it.part||'');edSt=(it.steps||[]).map(x=>({t:x.t,d:!!x.d}));drawSteps();$('edStepNew').value='';$('edFocus').hidden=!id||it.done;$('edNote').value=it.note||'';
-  const d=$('edDel');delete d.dataset.sure;d.textContent='Delete';calLink();ptsVis();edMore(false,id?moreSet(it):0);
+  const d=$('edDel');delete d.dataset.sure;d.textContent='Delete';calLink();ptsVis();edSecsFor(it);edMore(false,id?moreSet(it):0);
   {const dn=!!(id&&it.done&&it.doneAt),w=new Date(it.doneAt||Date.now());$('edDoneRow').hidden=!dn;$('edDoneD').max=today();
    if(dn){$('edDoneD').value=ymd(w);$('edDoneT').value=pad(w.getHours())+':'+pad(w.getMinutes());}}
   show('edSheet');if(!id&&!it.text)$('edText').focus();}
@@ -1771,6 +1801,12 @@ $('edKind').addEventListener('click',e=>{const b=e.target.closest('button');if(b
 // The add/edit window starts simple; everything else sits behind "More details".
 const moreSet=it=>[it.cat,it.start,it.part,it.due,it.repeat&&it.repeat!=='none',Number(it.imp),Number(it.urg),(it.steps||[]).length,it.est,it.note].filter(Boolean).length;
 let edMoreN=0;
+// Inside "More details" each kind of detail has its own button; only the parts you open (or that already have something) show.
+function edSec(k,on){const sec=$('edMore').querySelector('.edsec[data-s="'+k+'"]'),b=$('edTabs').querySelector('[data-s="'+k+'"]');if(!sec)return;sec.hidden=!on;b.setAttribute('aria-pressed',String(on));}
+function edSecsFor(it){const has={time:it.start||it.part,remind:it.remT,due:it.due,rep:it.repeat&&it.repeat!=='none',steps:(it.steps||[]).length,pri:Number(it.imp)||Number(it.urg),est:it.est,cat:it.cat,note:it.note,kind:false};
+  for(const k in has){edSec(k,!!has[k]);$('edTabs').querySelector('[data-s="'+k+'"]').classList.toggle('set',!!has[k]);}}
+$('edTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const on=b.getAttribute('aria-pressed')!=='true';edSec(b.dataset.s,on);
+  if(on){const sec=$('edMore').querySelector('.edsec[data-s="'+b.dataset.s+'"]'),f=sec.querySelector('input:not([type=date]):not([type=time]),textarea');if(f&&(b.dataset.s==='steps'||b.dataset.s==='note'))setTimeout(()=>f.focus(),30);sec.scrollIntoView({block:'nearest',behavior:'smooth'});}});
 function edMore(open,n){if(n!=null)edMoreN=n;$('edMore').hidden=!open;const b=$('edMoreBtn');b.setAttribute('aria-expanded',String(open));
   b.textContent=open?'Fewer details':'More details'+(edMoreN?' · '+edMoreN+' set':'')+' ▾';}
 $('edMoreBtn').onclick=()=>edMore($('edMore').hidden);

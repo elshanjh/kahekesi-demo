@@ -3,7 +3,7 @@
 // This file gives the page the same adapter, but keeps everything in the visitor's browser
 // and fills it with made-up sample data, so anyone can try the app without signing in.
 
-const KEY = 'kahekesi-demo.v1';
+const KEY = 'kahekesi-demo.v2';
 const DAY = 864e5;
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -28,7 +28,7 @@ function sample() {
     item('t3', {text: 'Change the cat litter', owner: 'a', date: dayOff(0), repeat: 'daily', points: 5}),
     item('t4', {text: 'Water the plants', owner: 'both', date: dayOff(0), repeat: 'weekly', points: 5}),
     item('t5', {text: 'Book a dentist appointment', owner: 'b', cat: 'Admin', due: dayOff(1), urg: 1, createdBy: 'b'}),
-    item('t6', {text: 'Pay the electricity bill', owner: 'a', cat: 'Admin', due: dayOff(3), imp: 1}),
+    item('t6', {text: 'Pay the electricity bill', owner: 'a', cat: 'Admin', due: dayOff(3), imp: 1, remT: '19:00', remD: dayOff(2), remE: 60}),
     item('t7', {text: 'Plan the weekend trip', owner: 'both', date: dayOff(2), start: '20:00', points: 15, note: 'Train or bus? Check prices first.'}),
     item('t8', {text: 'Return the library books', owner: 'b', cat: 'Errands', due: dayOff(5), createdBy: 'b'}),
     // A request from Alex to Sam, waiting for an answer
@@ -60,6 +60,22 @@ function sample() {
     done('d11', 'Defrost the freezer', 'b', 9, 20, {cat: 'Home'}),
   ]);
 
+  // More shop trips over the last three months, so the trip list, search and the monthly report have something to show.
+  const trips = {};
+  const trip = (id, who, days, store, list) => {
+    const its = list.map(([text, price, qty, brand, sale], i) => {
+      const iid = id + '-' + i;
+      items[iid] = item(iid, {text, kind: 'shopping', owner: 'both', points: 5, done: true, doneAt: ago(days, 18), doneBy: who, tripId: id, price, createdAt: ago(days + 2)})[1];
+      return {id: iid, text, price, qty, brand, sale: !!sale};
+    });
+    trips[id] = {who, at: ago(days, 18), store, total: Math.round(its.reduce((n, x) => n + (x.price || 0), 0) * 100) / 100, createdAt: ago(days, 18), items: its};
+  };
+  trip('tr2', 'a', 6, 'Lidl', [['Oat milk', 1.49, '1 l', 'Oatly', false], ['Tomatoes', 2.39, '500 g', '', false], ['Rye bread', 1.65, '1', 'Leibur', false], ['Tofu', 2.19, '400 g', 'Taifun', true], ['Bananas', 1.39, '1 kg', '', false]]);
+  trip('tr3', 'b', 12, 'Rimi', [['Pasta', 0.99, '500 g', 'Barilla', true], ['Lentils', 2.29, '1 kg', '', false], ['Olive oil', 7.99, '0.75 l', 'Filippo Berio', false], ['Dish soap', 2.69, '450 ml', 'Fairy', false], ['Chocolate', 1.47, '100 g', 'Fazer', false]]);
+  trip('tr4', 'a', 24, 'Prisma', [['Oat milk', 1.69, '1 l', 'Oatly', false], ['Rye bread', 1.75, '1', 'Leibur', false], ['Apples', 2.49, '1 kg', '', false], ['Shampoo', 4.99, '400 ml', 'Head & Shoulders', true], ['Cat food', 6.49, '12x85 g', 'Whiskas', false]]);
+  trip('tr5', 'b', 38, 'Lidl', [['Oat milk', 1.49, '1 l', 'Oatly', false], ['Bananas', 1.29, '1 kg', '', true], ['Peanut butter', 3.29, '350 g', '', false], ['Toilet paper', 5.99, '8', 'Zewa', false], ['Coffee beans', 7.99, '500 g', 'Paulig', false]]);
+  trip('tr6', 'a', 55, 'Rimi', [['Rye bread', 1.75, '1', 'Leibur', false], ['Tomatoes', 2.59, '500 g', '', false], ['Vegan sausages', 3.49, '200 g', 'Oumph', false], ['Basmati rice', 3.99, '1 kg', '', false], ['Sparkling water', 2.94, '6x0.5 l', 'Värska', true]]);
+
   return {
     config: {main: {nameA: 'Alex', nameB: 'Sam', goalTitle: 'Weekend in Tartu', goalTarget: 300, goalSince: ago(14),
       cats: ['Home', 'Admin', 'Errands'], tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Tallinn'}},
@@ -73,15 +89,22 @@ function sample() {
     redemptions: {
       x1: {who: 'b', title: 'Sleep in on Sunday', cost: 40, at: ago(3, 9)},
     },
-    trips: {
+    trips: Object.assign(trips, {
       trip1: {who: 'b', at: ago(2, 18), store: 'Rimi', total: 14.86, createdAt: ago(2, 18), items: [
         {id: 'b1', text: 'Coffee beans', price: 8.49, qty: '500 g', brand: 'Paulig', sale: true},
         {id: 'b2', text: 'Pasta', price: 1.29, qty: '500 g', brand: 'Barilla', sale: false},
         {id: 'b3', text: 'Bananas', price: 1.59, qty: '1 kg', brand: '', sale: false},
         {id: 'e1', text: 'Yoghurt', price: 3.49, qty: '4x150 g', brand: 'Alma', sale: false},
       ]},
+    }),
+    status: {}, breaks: {}, wishes: {},
+    reminders: {
+      m1: {who: 'a', from: 'a', text: 'Take vitamins', time: '09:00', days: 'daily', every: 30, until: '12:00', priv: false, doneOn: dayOff(0), createdAt: ago(10)},
+      m2: {who: 'a', from: 'a', text: 'Daily Wordle', time: '20:00', days: 'daily', every: 60, until: '22:00', priv: false, doneOn: null, createdAt: ago(10)},
+      m3: {who: 'a', from: 'b', text: 'Cancel the streaming trial', time: '10:00', days: 'date', date: dayOff(4), every: 60, until: '22:00', priv: false, doneOn: null, createdAt: ago(1)},
+      m4: {who: 'b', from: 'a', text: 'Water the balcony plants', time: '18:00', days: 'pick', wd: [1, 4], every: 15, until: '21:00', priv: false, doneOn: null, createdAt: ago(5)},
+      m5: {who: 'b', from: 'b', text: 'Stretch for 10 minutes', time: '21:00', days: 'weekdays', every: 0, until: '22:00', priv: false, doneOn: null, createdAt: ago(8)},
     },
-    status: {}, breaks: {}, wishes: {}, reminders: {},
   };
 }
 
