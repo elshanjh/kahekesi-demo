@@ -53,7 +53,8 @@
 :root[data-theme="purple"] .btn:not(.ghost),:root[data-theme="neon"] .btn:not(.ghost){background:var(--grad);color:#fff;box-shadow:0 4px 16px var(--glow1)}
 :root[data-theme="purple"] .brand h1,:root[data-theme="neon"] .brand h1{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 :root[data-theme="neon"] .tabs,:root[data-theme="neon"] .side{background:#140b22ee}
-:root[data-theme="purple"] .top{background:#f3eefbd9;box-shadow:-100vmax 0 0 #f3eefbd9,100vmax 0 0 #f3eefbd9;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}:root[data-theme="neon"] .top{background:#0e0818cc;box-shadow:-100vmax 0 0 #0e0818cc,100vmax 0 0 #0e0818cc;clip-path:inset(0 -100vmax -16px);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+@media (max-width:859px){:root[data-theme="purple"] .top,:root[data-theme="neon"] .top{margin-inline:calc(50% - 50vw);padding-inline:calc(50vw - 50%)}}
+:root[data-theme="purple"] .top{background:#f3eefbd9;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}:root[data-theme="neon"] .top{background:#0e0818cc;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 :root[data-theme="neon"] .tabs [aria-current="page"]{text-shadow:0 0 12px #c58bffaa}
 
 *{box-sizing:border-box}
